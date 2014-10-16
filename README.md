@@ -1,43 +1,139 @@
-PouchDB Plugin Seed
+PouchDB LRU Cache
 =====
 
-[![Build Status](https://travis-ci.org/pouchdb/plugin-seed.svg)](https://travis-ci.org/pouchdb/plugin-seed)
+[![Build Status](https://travis-ci.org/squarespace/pouchdb-lru-cache.svg)](https://travis-ci.org/squarespace/pouchdb-lru-cache)
 
-Fork this project to build your first PouchDB plugin.  It contains everything you need to test in Node, WebSQL, and IndexedDB.  It also includes a Travis config file so you
-can automatically run the tests in Travis.
+An LRU (least recently used) cache designed for storing binary data in PouchDB.
+
+Motivation
+-------
+
+In mobile and offline-ready apps, you often want to have a small store of binary data that you can guarantee won't grow out of control. This is entirely possible in PouchDB, but implementing it correctly requires some subtle knowledge of how PouchDB deduplicates attachments and how CouchDB compaction works.
+
+Why PouchDB? Because it's the best and [most efficient](http://pouchdb.com/faq.html#data_types) way to store binary data cross-browser. You could just use Web SQL, but then  you'd be locked into a Webkit-only implementation. This code will work on IE 10+, Windows Phone 8, Firefox, Firefox OS, Chrome, Safari, iOS, and Android.
+
+Usage
+----
+
+To get the plugin, download it from the `dist` files above or download from Bower:
+
+```
+bower install pouchdb-lru-cache
+```
+
+Then include it after `pouchdb.js` in your HTML page:
+
+```html
+<script src="pouchdb.js"></script>
+<script src="pouchdb.lru-cache.js"></script>
+```
+
+Or to use it in Node.js, just npm install it:
+
+```
+npm install pouchdb-lru-cache
+```
+
+And then attach it to the `PouchDB` object:
+
+```js
+var PouchDB = require('pouchdb');
+PouchDB.plugin(require('pouchdb-myplugin'));
+```
+
+API
+-----
+
+All API calls are on a `db` object created using `new PouchDB('myName')`. For best performance, you should use a separate DB for this LRU plugin and not call any non-LRU methods on the `db`.
+
+### Overview
+
+* db.initLru([options])
+* db.lru.put(key, blob)
+* db.lru.get(key)
+
+### db.initLru([options])
+
+Sets up the LRU plugin. You must call this before you can do any of the other API calls. It will create a magical `db.lru` object, which you will need for the other stuff.
+
+#### Options:
+
+* `max_size`:  maximum number of bytes to store, total, in the LRU cache. Use `0` for unlimited.
+
+#### Example:
+
+```js
+db.initLru({max_size: 5000000}); // store 5 MB maximum
+db.initLru({max_size: 0}); // no limit
+```
+
+This is a synchronous method and does not return a Promise.
+
+### db.lru.put(key, blob [, type])
+
+Store a binary Blob in the database. Returns a Promise that will resolve with success if the attachment was successfully stored.
+
+### Arguments:
+
+* `key`: a String to use to identify the blob (e.g. a URL).
+* `blob`: an HTML5 [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob?redirectlocale=en-US&redirectslug=DOM%2FBlob) object or a base64-encoded string.
+* `type`: content-type of the Blob. If you gave a base64-encoded string for the `blob` argument, then you must supply a type. Otherwise we can automatically infer the type from an HTML5 Blob, so it's not necessary.
+
+### Example:
+
+With HTML5 Blobs:
+
+```js
+var blob = new Blob(['some text data'], {type: 'text/plain'});
+db.lru.put('my_id', blob).then(function () {
+  // success
+}).catch(function (err) {
+  // failure. might occur because you hit the storage limit, or because the size
+  // of the attachment is bigger than the max_size, or because your computer
+  // exploded.
+});
+```
+
+With base64 strings:
+
+```js
+var base64 = btoa('some text data');
+db.lru.put('my_id', base64, 'text/plain').then(function () {
+  // success
+}).catch(function (err) {
+  // failure
+});
+```
+
+### db.lru.get(key)
+
+Get the binary data from the database based on the given String `key`. The data is always returned in HTML5 Blob format. If the data is not present (e.g. because it got evicted), then you'll get an error with status 404.
+
+### Arguments:
+
+* `key`: a String to use to identify the blob (e.g. a URL).
+
+### Example:
+
+```js
+db.lru.get('my_id').then(function (blob) {
+  // yo, we got a blob
+}).catch(function (err) {
+  if (err.status === 404) {
+    // nope, doesn't exist
+  } else {
+    // some other nasty error. maybe your computer asploded
+  }
+})
+```
+
 
 Building
 ----
     npm install
     npm run build
 
-Your plugin is now located at `dist/pouchdb.mypluginname.js` and `dist/pouchdb.mypluginname.min.js` and is ready for distribution.
-
-Getting Started
--------
-
-**First**, change the `name` in `package.json` to whatever you want to call your plugin.  Change the `build` script so that it writes to the desired filename (e.g. `pouchdb.mypluginname.js`).  Also, change the authors, description, git repo, etc.
-
-**Next**, modify the `index.js` to do whatever you want your plugin to do.  Right now it just adds a `pouch.sayHello()` function that says hello:
-
-```js
-exports.sayHello = utils.toPromise(function (callback) {
-  callback(null, 'hello');
-});
-```
-
-**Optionally**, you can add some tests in `tests/test.js`. These tests will be run both in the local database and a remote CouchDB, which is expected to be running at localhost:5984 in "Admin party" mode.
-
-The sample test is:
-
-```js
-
-it('should say hello', function () {
-  return db.sayHello().then(function (response) {
-    response.should.equal('hello');
-  });
-});
-```
+The plugin is now located at `dist/pouchdb.lru-cache.js` and `dist/pouchdb.lru-cache.min.js` and is ready for distribution.
 
 Testing
 ----
@@ -51,9 +147,6 @@ This will run the tests in Node using LevelDB:
 You can also check for 100% code coverage using:
 
     npm run coverage
-
-If you don't like the coverage results, change the values from 100 to something else in `package.json`, or add `/*istanbul ignore */` comments.
-
 
 If you have mocha installed globally you can run single test with:
 ```
@@ -76,28 +169,3 @@ You can run e.g.
     CLIENT=selenium:phantomjs npm test
 
 This will run the tests automatically and the process will exit with a 0 or a 1 when it's done. Firefox uses IndexedDB, and PhantomJS uses WebSQL.
-
-What to tell your users
---------
-
-Below is some boilerplate you can use for when you want a real README for your users.
-
-To use this plugin, include it after `pouchdb.js` in your HTML page:
-
-```html
-<script src="pouchdb.js"></script>
-<script src="pouchdb.mypluginname.js"></script>
-```
-
-Or to use it in Node.js, just npm install it:
-
-```
-npm install pouchdb-myplugin
-```
-
-And then attach it to the `PouchDB` object:
-
-```js
-var PouchDB = require('pouchdb');
-PouchDB.plugin(require('pouchdb-myplugin'));
-```
