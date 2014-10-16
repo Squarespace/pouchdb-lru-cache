@@ -178,5 +178,44 @@ function tests(dbName, dbType) {
       }));
 
     });
+
+    it('deletes multiple least-recently used things', function () {
+      // the contents are "foo" and "bar", so let's try going over 8
+      db.initLru(8);
+      return db.lru.put('foo', 'Zm9v', 'text/plain').then(function () {
+        return db.lru.put('bar', 'YmFy', 'text/plain');
+      }).then(function () {
+        return db.lru.put('foobar', 'Zm9vYmFy', 'text/plain');
+      }).then(function () {
+        return db.lru.get('foo').then(function () {
+          throw new Error('should not be here: foo');
+        }, function (err) {
+          should.exist(err);
+        });
+      }).then(function () {
+        return db.lru.get('bar').then(function () {
+          throw new Error('should not be here: bar');
+        }, function (err) {
+          should.exist(err);
+        });
+      }).then(function () {
+        return db.lru.get('foobar');
+      }).then(function (blob) {
+        return blobEquals(blob, 'Zm9vYmFy');
+      });
+    });
+
+    it('doesnt even store one thing if too large', function () {
+      // the contents are "foo" and "bar", so let's try going over 8
+      db.initLru(1);
+      return db.lru.put('foo', 'Zm9v', 'text/plain').then(function () {
+        return db.lru.get('foo').then(function () {
+          throw new Error('should not be here: foo');
+        }, function (err) {
+          should.exist(err);
+        });
+      });
+    });
+
   });
 }

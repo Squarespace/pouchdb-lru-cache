@@ -10,7 +10,7 @@ Motivation
 
 In mobile and offline-ready apps, you often want to have a small store of binary data that you can guarantee won't grow out of control. This is entirely possible in PouchDB, but implementing it correctly requires some subtle knowledge of how PouchDB deduplicates attachments and how CouchDB compaction works.
 
-Why PouchDB? Because it's the best and [most efficient](http://pouchdb.com/faq.html#data_types) way to store binary data cross-browser. You could just use Web SQL, but then  you'd be locked into a Webkit-only implementation. This code will work on IE 10+, Windows Phone 8, Firefox, Firefox OS, Chrome, Safari, iOS, and Android.
+Why PouchDB? Because it's the best and [most efficient] way to store binary data cross-browser. You could just use Web SQL, but then  you'd be locked into a Webkit-only implementation. This code will work on IE 10+, Windows Phone 8, Firefox, Firefox OS, Chrome, Safari, iOS, and Android.
 
 Usage
 ----
@@ -68,6 +68,8 @@ db.initLru(0); // no limit
 ```
 
 This is a synchronous method and does not return a Promise.
+
+**Caveat**: the size specified here refers to the byte size as interpreted by PouchDB. The underlying storage engine may take up more actual space on disk than that, [depending on the browser](http://pouchdb.com/faq.html#data_types). However, most browsers seem to have fixed their inefficiency issues, so this will become less of a problem going forward. 
 
 ### db.lru.put(key, blob [, type])
 
