@@ -20,10 +20,21 @@ function getMainDoc(db) {
   return db.get(MAIN_DOC_ID).catch(function (err) {
     /* istanbul ignore else */
     if (err.status === 404) {
-      return {_id: MAIN_DOC_ID, _attachments: {}};
+      return db.put({
+        _id: MAIN_DOC_ID,
+        _attachments: {},
+        lastUsed: {}
+      }).then(function () {
+        return db.get(MAIN_DOC_ID);
+      });
     } else {
       throw err;
     }
+  }).then(function (doc) {
+    if (!doc._attachments) {
+      doc._attachments = {};
+    }
+    return doc;
   });
 }
 
@@ -35,12 +46,52 @@ function createKey(key) {
   return '$' + key;
 }
 
+function calculateTotalSize(mainDoc) {
+  var digestsToSizes = {};
+
+  // dedup by digest, since that's what Pouch does under the hood
+  Object.keys(mainDoc._attachments).forEach(function (attName) {
+    var att = mainDoc._attachments[attName];
+    digestsToSizes[att.digest] = (digestsToSizes[att.digest] || 0) + att.length;
+  });
+
+  var total = 0;
+  Object.keys(digestsToSizes).forEach(function (digest) {
+    total += digestsToSizes[digest];
+  });
+  return total;
+}
+
+function getLeastRecentlyUsed(mainDoc) {
+  var digestsToLastUsed = {};
+
+  // dedup by digest, use the most recent date
+  Object.keys(mainDoc._attachments).forEach(function (attName) {
+    var att = mainDoc._attachments[attName];
+    var existing  = digestsToLastUsed[att.digest] || 0;
+    digestsToLastUsed[att.digest] = Math.max(existing, mainDoc.lastUsed[att.digest]);
+  });
+
+  var min;
+  var minDigest;
+  Object.keys(digestsToLastUsed).forEach(function (digest) {
+    var lastUsed = digestsToLastUsed[digest];
+    if (typeof min === 'undefined' || min > lastUsed) {
+      min = lastUsed;
+      minDigest = digest;
+    }
+  });
+  return minDigest;
+}
+
 exports.initLru = function (maxSize) {
   var db = this;
 
-  var api = {};
+  if (typeof maxSize !== 'number' || maxSize === 0) {
+    maxSize = Number.MAX_VALUE; // infinity
+  }
 
-  api.maxSize = maxSize;
+  var api = {};
 
   api.put = function (key, blob, type) {
     key = createKey(key);
@@ -54,6 +105,37 @@ exports.initLru = function (maxSize) {
         return; // already stored
       }
       return db.putAttachment(MAIN_DOC_ID, key, mainDoc._rev, blob, type);
+    }).then(function () {
+      return getMainDoc(db);
+    }).then(function (mainDoc) {
+      var digest = mainDoc._attachments[key].digest;
+
+      mainDoc.lastUsed[digest] = new Date().getTime();
+
+      var totalSize = calculateTotalSize(mainDoc);
+
+      if (totalSize <= maxSize) {
+        return db.put(mainDoc); // nothing to do
+      }
+
+      // else need to trim the cache, i.e. delete the LRU
+      // objects until we fit in the size
+
+      while (totalSize > maxSize) {
+        var leastUsedDigest = getLeastRecentlyUsed(mainDoc);
+
+        var attNames = Object.keys(mainDoc._attachments);
+        for (var i = 0; i < attNames.length; i++) {
+          var attName = attNames[i];
+          if (mainDoc._attachments[attName].digest === leastUsedDigest) {
+            delete mainDoc._attachments[attName];
+          }
+        }
+        totalSize = calculateTotalSize(mainDoc);
+      }
+      return db.put(mainDoc);
+    }).then(function () {
+      return db.compact(); // attachments associated with non-leaf revisions will be deleted
     });
 
     queue = promise.catch(noop); // squelch

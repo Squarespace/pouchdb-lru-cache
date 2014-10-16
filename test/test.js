@@ -31,6 +31,14 @@ dbs.split(',').forEach(function (db) {
   tests(db, dbType);
 });
 
+function chain(promiseFactories) {
+  var promise = Promise.resolve();
+  promiseFactories.forEach(function (promiseFactory) {
+    promise = promise.then(promiseFactory);
+  });
+  return promise;
+}
+
 function tests(dbName, dbType) {
 
   var db;
@@ -43,6 +51,7 @@ function tests(dbName, dbType) {
     return PouchDB.destroy(dbName);
   });
   describe(dbType + ': main test suite', function () {
+    this.timeout(30000);
 
     function blobEquals(blob, base64) {
       if (typeof process === 'undefined' || !process.browser) {
@@ -118,6 +127,56 @@ function tests(dbName, dbType) {
           should.exist(err);
         });
       });
+    });
+
+    it('deletes the least-recently used things', function () {
+      // the contents are "foo" and "bar", so let's try going over 5
+      db.initLru(5);
+      return db.lru.put('foo', 'Zm9v', 'text/plain').then(function () {
+        return db.lru.get('foo');
+      }).then(function (blob) {
+        return blobEquals(blob, 'Zm9v');
+      }).then(function () {
+        return db.lru.put('bar', 'YmFy', 'text/plain');
+      }).then(function () {
+        return db.lru.get('foo').then(function () {
+          throw new Error('should not be here');
+        }, function (err) {
+          should.exist(err);
+        });
+      }).then(function () {
+        return db.lru.get('bar');
+      }).then(function (blob) {
+        return blobEquals(blob, 'YmFy');
+      });
+    });
+
+    it('doesn\'t delete if unnecessary', function () {
+      // the contents are "foo" and "bar", i.e. each length 3
+
+      var sizes = [0, 6, 10, 100000000];
+
+      return chain(sizes.map(function (size) {
+        return function () {
+          db.initLru(size);
+          return db.lru.put('foo', 'Zm9v', 'text/plain').then(function () {
+            return db.lru.get('foo');
+          }).then(function (blob) {
+            return blobEquals(blob, 'Zm9v');
+          }).then(function () {
+            return db.lru.put('bar', 'YmFy', 'text/plain');
+          }).then(function () {
+            return db.lru.get('foo');
+          }).then(function (blob) {
+            return blobEquals(blob, 'Zm9v');
+          }).then(function () {
+            return db.lru.get('bar');
+          }).then(function (blob) {
+            return blobEquals(blob, 'YmFy');
+          });
+        };
+      }));
+
     });
   });
 }
