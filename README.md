@@ -48,23 +48,23 @@ All API calls are on a `db` object created using `new PouchDB('myName')`. For be
 
 ### Overview
 
-* db.initLru([options])
+* db.initLru([maxSize])
 * db.lru.put(key, blob)
 * db.lru.get(key)
 
-### db.initLru([options])
+### db.initLru(maxSize)
 
 Sets up the LRU plugin. You must call this before you can do any of the other API calls. It will create a magical `db.lru` object, which you will need for the other stuff.
 
-#### Options:
+#### Arguments:
 
-* `max_size`:  maximum number of bytes to store, total, in the LRU cache. Use `0` for unlimited.
+* `maxSize`:  maximum number of bytes to store, total, in the LRU cache. Use `0` (or unspecified) for unlimited storage.
 
 #### Example:
 
 ```js
-db.initLru({max_size: 5000000}); // store 5 MB maximum
-db.initLru({max_size: 0}); // no limit
+db.initLru(5000000); // store 5 MB maximum
+db.initLru(0); // no limit
 ```
 
 This is a synchronous method and does not return a Promise.
