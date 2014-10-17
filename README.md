@@ -55,7 +55,7 @@ All API calls are on a `db` object created using `new PouchDB('myName')`. For be
 * [`db.lru.get(key)`](#dblrugetkey)
 * [`db.lru.info()`](#dblruinfo)
 
-### db.initLru(maxSize)
+### db.initLru([maxSize])
 
 Sets up the LRU plugin. You must call this before you can do any of the other API calls. It will create a magical `db.lru` object, which you will need for the other stuff.
 
