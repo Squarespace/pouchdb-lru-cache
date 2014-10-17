@@ -3,7 +3,7 @@ PouchDB LRU Cache
 
 [![Build Status](https://travis-ci.org/squarespace/pouchdb-lru-cache.svg)](https://travis-ci.org/squarespace/pouchdb-lru-cache)
 
-An LRU (least recently used) cache designed for storing binary data in PouchDB.
+An LRU (least recently used) cache designed for storing binary data in PouchDB. Runs in modern browsers and Node.js.
 
 Motivation
 -------
