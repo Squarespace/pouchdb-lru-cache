@@ -168,9 +168,17 @@ The `info` object might look like this:
     }
   },
   "numUniqueItems": 2,
+  "numEvicted": 0,
   "totalLength": 135
 }
 ```
+
+Return values:
+
+* `items`: map of keys to the stored attachments, represented as their byte `length`, MD5 `digest`, and `lastUsed` timestamp.
+* `numUniqueItems`: number of stored items after deduplication.
+* `numEvicted`: number of unique items evicted from the store. If the same attachment is evicted more than once, the number will not increment.
+* `totalLength`: total byte `length` of all unique items
 
 Notice that the LRU cache takes into consideration the fact that attachments are deduped based on digest in PouchDB.
 

@@ -241,9 +241,17 @@ exports.initLru = function (maxSize) {
         totalLength += digestsToLength[digest];
       });
 
+      var numEvicted = 0;
+      Object.keys(lastUsedDoc.lastUsed).forEach(function (digest) {
+        if (!(digest in digestsToLength)) {
+          numEvicted++;
+        }
+      });
+
       return {
         items: items,
         numUniqueItems: Object.keys(digestsToLength).length,
+        numEvicted: numEvicted,
         totalLength: totalLength
       };
     });

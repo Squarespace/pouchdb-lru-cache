@@ -293,10 +293,42 @@ function tests(dbName, dbType) {
         Object.keys(info.items).sort().should.deep.equal(
           ['bar.png', 'baz.png', 'foo.png']);
         info.numUniqueItems.should.equal(2);
+        info.numEvicted.should.equal(0);
         [135, 149].indexOf(info.totalLength).should.be.above(-1,
             'expected either 135 or 149, and it is: ' + info.totalLength);
       });
     });
 
+    it('counts evicted', function () {
+      db.initLru(80);
+      return db.lru.put('foo.png', transparent1x1Png, 'image/png').then(function () {
+        return db.lru.put('bar.png', transparent1x1Png, 'image/png');
+      }).then(function () {
+        return db.lru.put('baz.png', black1x1Png, 'image/png');
+      }).then(function () {
+        return db.lru.get('foo.png').then(function () {
+          throw new Error('should not be here');
+        }, function (err) {
+          should.exist(err);
+        });
+      }).then(function () {
+        return db.lru.get('bar.png').then(function () {
+          throw new Error('should not be here');
+        }, function (err) {
+          should.exist(err);
+        });
+      }).then(function () {
+        return db.lru.get('baz.png');
+      }).then(function () {
+        return db.lru.info();
+      }).then(function (info) {
+        Object.keys(info.items).sort().should.deep.equal(
+          ['baz.png']);
+        info.numUniqueItems.should.equal(1);
+        info.numEvicted.should.equal(1);
+        [67, 73].indexOf(info.totalLength).should.be.above(-1,
+            'expected either 67 or 73, and it is: ' + info.totalLength);
+      });
+    });
   });
 }
