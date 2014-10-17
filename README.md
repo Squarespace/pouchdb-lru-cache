@@ -50,10 +50,10 @@ All API calls are on a `db` object created using `new PouchDB('myName')`. For be
 
 ### Overview
 
-* [db.initLru([maxSize])](#dbinitlrumaxsize)
-* [db.lru.put(key, blob, type)](#dblruputkey-blob--type)
-* [db.lru.get(key)](#dblrugetkey)
-* [db.lru.info()](#dblruinfo)
+* [`db.initLru([maxSize])`](#dbinitlrumaxsize)
+* [`db.lru.put(key, blob, type)`](#dblruputkey-blob--type)
+* [`db.lru.get(key)`](#dblrugetkey)
+* [`db.lru.info()`](#dblruinfo)
 
 ### db.initLru(maxSize)
 
