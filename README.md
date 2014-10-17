@@ -185,7 +185,9 @@ Notice that the LRU cache takes into consideration the fact that attachments are
 Caveats
 --------
 
-The size specified in `initLru()` refers to the byte length as interpreted by PouchDB. The underlying storage engine may take up more actual space on disk than that, [depending on the browser and adapter](http://pouchdb.com/faq.html#data_types). However, most browsers seem to have fixed their inefficiency issues (Chrome 38+, Safari 7.1+, iOS 8+), so this will become less of a problem going forward.
+The `maxSize` specified in `initLru()` refers to the byte length of the binary attachments as interpreted by PouchDB. The underlying storage engine may take up more actual space on disk than the byte length, [depending on the browser and adapter](http://pouchdb.com/faq.html#data_types). However, most browsers seem to have fixed their inefficiency issues (Chrome 38+, Safari 7.1+, iOS 8+), so this will become less of a problem going forward.
+
+Furthermore, the `maxSize` does not account for the metadata that needs to be stored in order to *describe* the attachments, so you should give yourself a reasonable buffer when you choose a `maxSize`.
 
 This plugin also works on CouchDB, but YMMV. In particular, CouchDB doesn't dedup attachments based on digest, so the assumptions this plugin makes about the true underlying size may be wrong.
 
