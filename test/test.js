@@ -266,5 +266,38 @@ function tests(dbName, dbType) {
       });
     });
 
+    // 68 in length
+    var transparent1x1Png =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP6zwAAAgcBApocMXEA' +
+      'AAAASUVORK5CYII=';
+    // 68 in length
+    var black1x1Png =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNiAAAABgADNjd8qAAA' +
+      'AABJRU5ErkJggg==';
+
+    it('handles dups', function () {
+      db.initLru(160);
+      return db.lru.put('foo.png', transparent1x1Png, 'image/png').then(function () {
+        return db.lru.put('bar.png', transparent1x1Png, 'image/png');
+      }).then(function () {
+        return db.lru.put('baz.png', black1x1Png, 'image/png');
+      }).then(function () {
+        return db.lru.get('foo.png');
+      }).then(function () {
+        return db.lru.get('bar.png');
+      }).then(function () {
+        return db.lru.get('baz.png');
+      }).then(function () {
+        return db.lru.info();
+      }).then(function (info) {
+        Object.keys(info.items).sort().should.deep.equal(
+          ['bar.png', 'baz.png', 'foo.png']);
+        console.log(JSON.stringify(info));
+        info.numUniqueItems.should.equal(2);
+        [135, 149].indexOf(info.totalLength).should.be.above(-1,
+            'expected either 135 or 149, and it is: ' + info.totalLength);
+      });
+    });
+
   });
 }

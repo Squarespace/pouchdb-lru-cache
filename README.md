@@ -51,6 +51,7 @@ All API calls are on a `db` object created using `new PouchDB('myName')`. For be
 * db.initLru([maxSize])
 * db.lru.put(key, blob)
 * db.lru.get(key)
+* db.lru.info()
 
 ### db.initLru(maxSize)
 
@@ -69,7 +70,7 @@ db.initLru(0); // no limit
 
 This is a synchronous method and does not return a Promise.
 
-**Caveat**: the size specified here refers to the byte size as interpreted by PouchDB. The underlying storage engine may take up more actual space on disk than that, [depending on the browser](http://pouchdb.com/faq.html#data_types). However, most browsers seem to have fixed their inefficiency issues, so this will become less of a problem going forward. 
+**Note:** see an important [caveat](#caveats) below about the true size on disk.
 
 ### db.lru.put(key, blob [, type])
 
@@ -79,7 +80,7 @@ Store a binary Blob in the database. Returns a Promise that will resolve with su
 
 * `key`: a String to use to identify the blob (e.g. a URL).
 * `blob`: an HTML5 [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob?redirectlocale=en-US&redirectslug=DOM%2FBlob) object or a base64-encoded string.
-* `type`: content-type of the Blob. If you gave a base64-encoded string for the `blob` argument, then you must supply a type. Otherwise we can automatically infer the type from an HTML5 Blob, so it's not necessary.
+* `type`: the content-type, e.g. `'text/plain'`, `'image/png'`, `'image/jpeg'`, etc. Yes, this is redundant in the case of an HTML5 Blob, but we require it because Node `Buffer`s and base64-encoded strings do not have an inherent type.
 
 ### Example:
 
@@ -109,7 +110,7 @@ db.lru.put('my_id', base64, 'text/plain').then(function () {
 
 ### db.lru.get(key)
 
-Get the binary data from the database based on the given String `key`. The data is always returned in HTML5 Blob format. If the data is not present (e.g. because it got evicted), then you'll get an error with status 404.
+Get the binary data from the database based on the given String `key`. The data is always returned in HTML5 Blob format (or a Buffer in Node). If the data is not present (either because it got evicted, or because it never existed), then you'll get an error with status 404.
 
 ### Arguments:
 
@@ -128,6 +129,57 @@ db.lru.get('my_id').then(function (blob) {
   }
 })
 ```
+
+### db.lru.info()
+
+Get some basic information about what's stored in the LRU cache.
+
+### Example:
+
+```js
+db.lru.info().then(function (info) {
+  // got the info object
+}).catch(function (err) {
+  // splodey computer
+});
+```
+
+The `info` object might look like this:
+
+```js
+{
+  "items": {
+    "foo.png": {
+      "length": 68,
+      "digest": "md5-l4wb7knXrV/BpNgQmbE+GA==",
+      "lastUsed": 1413557267330
+    },
+    "bar.png": {
+      "length": 68,
+      "digest": "md5-l4wb7knXrV/BpNgQmbE+GA==",
+      "lastUsed": 1413557267330
+    },
+    "baz.png": {
+      "length": 67,
+      "digest": "md5-7cVkAmmX4suBnAFSJ4A2Wg==",
+      "lastUsed": 1413557267332
+    }
+  },
+  "numUniqueItems": 2,
+  "totalLength": 135
+}
+```
+
+Notice that the LRU cache takes into consideration the fact that attachments are deduped based on digest in PouchDB.
+
+Caveats
+--------
+
+The size specified in `initLru()` refers to the byte length as interpreted by PouchDB. The underlying storage engine may take up more actual space on disk than that, [depending on the browser and adapter](http://pouchdb.com/faq.html#data_types). However, most browsers seem to have fixed their inefficiency issues (Chrome 38+, Safari 7.1+, iOS 8+), so this will become less of a problem going forward.
+
+This plugin also works on CouchDB, but YMMV. In particular, CouchDB doesn't dedup attachments based on digest, so the assumptions this plugin makes about the true underlying size may be wrong.
+
+You can use a PouchDB with `auto_compaction` enabled, but it's not necessary, because this plugin already does the compaction for you.
 
 
 Building

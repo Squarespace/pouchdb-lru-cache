@@ -42,8 +42,12 @@ function getMainDoc(db) {
  * Avoids errors if e.g. the key is "constructor"
  *
  */
-function createKey(key) {
+function encodeKey(key) {
   return '$' + key;
+}
+
+function decodeKey(key) {
+  return key.substring(1);
 }
 
 function calculateTotalSize(mainDoc) {
@@ -52,7 +56,7 @@ function calculateTotalSize(mainDoc) {
   // dedup by digest, since that's what Pouch does under the hood
   Object.keys(mainDoc._attachments).forEach(function (attName) {
     var att = mainDoc._attachments[attName];
-    digestsToSizes[att.digest] = (digestsToSizes[att.digest] || 0) + att.length;
+    digestsToSizes[att.digest] = att.length;
   });
 
   var total = 0;
@@ -94,7 +98,7 @@ exports.initLru = function (maxSize) {
   var api = {};
 
   api.put = function (key, blob, type) {
-    key = createKey(key);
+    key = encodeKey(key);
     var promise = queue.then(function () {
       if (!type) {
         throw new Error('need to specify a content-type');
@@ -143,7 +147,7 @@ exports.initLru = function (maxSize) {
   };
 
   api.get = function (key) {
-    key = createKey(key);
+    key = encodeKey(key);
 
     var promise = queue.then(function () {
       return getMainDoc(db);
@@ -155,6 +159,41 @@ exports.initLru = function (maxSize) {
       }
     }).then(function () {
       return db.getAttachment(MAIN_DOC_ID, key);
+    });
+
+    queue = promise.catch(noop); // squelch
+    return promise;
+  };
+
+  api.info = function () {
+    var promise = queue.then(function () {
+      return getMainDoc(db);
+    }).then(function (mainDoc) {
+
+      var items = {};
+      var digestsToLength = {};
+
+      Object.keys(mainDoc._attachments).forEach(function (key) {
+        var att = mainDoc._attachments[key];
+        key = decodeKey(key);
+        items[key] = {
+          length: att.length,
+          digest: att.digest,
+          lastUsed: mainDoc.lastUsed[att.digest]
+        };
+        digestsToLength[att.digest] = att.length;
+      });
+
+      var totalLength = 0;
+      Object.keys(digestsToLength).forEach(function (digest) {
+        totalLength += digestsToLength[digest];
+      });
+
+      return {
+        items: items,
+        numUniqueItems: Object.keys(digestsToLength).length,
+        totalLength: totalLength
+      };
     });
 
     queue = promise.catch(noop); // squelch
