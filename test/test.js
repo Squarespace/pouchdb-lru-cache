@@ -292,7 +292,6 @@ function tests(dbName, dbType) {
       }).then(function (info) {
         Object.keys(info.items).sort().should.deep.equal(
           ['bar.png', 'baz.png', 'foo.png']);
-        console.log(JSON.stringify(info));
         info.numUniqueItems.should.equal(2);
         [135, 149].indexOf(info.totalLength).should.be.above(-1,
             'expected either 135 or 149, and it is: ' + info.totalLength);
