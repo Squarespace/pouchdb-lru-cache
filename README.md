@@ -17,7 +17,7 @@ Why PouchDB? Because it's the most [efficient](http://pouchdb.com/faq.html#data_
 Usage
 ----
 
-To get the plugin, download it from the `dist` files above or download from Bower:
+To get the plugin, download it from the `dist` files above or from Bower:
 
 ```
 bower install pouchdb-lru-cache
@@ -190,6 +190,8 @@ The size specified in `initLru()` refers to the byte length as interpreted by Po
 This plugin also works on CouchDB, but YMMV. In particular, CouchDB doesn't dedup attachments based on digest, so the assumptions this plugin makes about the true underlying size may be wrong.
 
 You can use a PouchDB with `auto_compaction` enabled, but it's not necessary, because this plugin already does the compaction for you.
+
+Browsers have [storage limits](http://pouchdb.com/faq.html#data_limits). Be aware of them.
 
 
 Building
