@@ -146,6 +146,14 @@ exports.initLru = function (maxSize) {
     key = createKey(key);
 
     var promise = queue.then(function () {
+      return getMainDoc(db);
+    }).then(function (mainDoc) {
+      var att = mainDoc._attachments[key];
+      if (att && mainDoc.lastUsed[att.digest]) {
+        mainDoc.lastUsed[att.digest] = new Date().getTime();
+        return db.put(mainDoc);
+      }
+    }).then(function () {
       return db.getAttachment(MAIN_DOC_ID, key);
     });
 

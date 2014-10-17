@@ -217,5 +217,54 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('updates what\'s recently used', function () {
+      db.initLru(10);
+      return db.lru.put('foo', 'Zm9v', 'text/plain').then(function () {
+        return db.lru.put('bar', 'YmFy', 'text/plain');
+      }).then(function () {
+        return db.lru.get('foo'); // updates foo
+      }).then(function () {
+        return db.lru.put('foobar', 'Zm9vYmFy', 'text/plain');
+      }).then(function () {
+        return db.lru.get('foo');
+      }).then(function () {
+        return db.lru.get('foobar');
+      }).then(function () {
+        return db.lru.get('bar').then(function () {
+          throw new Error('should not be here: foo');
+        }, function (err) {
+          should.exist(err);
+        });
+      });
+    });
+
+    it('can put after deleting', function () {
+      db.initLru(5);
+      return db.lru.put('foo', 'Zm9v', 'text/plain').then(function () {
+        return db.lru.get('foo');
+      }).then(function () {
+        return db.lru.put('bar', 'YmFy', 'text/plain');
+      }).then(function () {
+        return db.lru.get('foo').then(function () {
+          throw new Error('should not be here');
+        }, function (err) {
+          should.exist(err);
+        });
+      }).then(function () {
+        return db.lru.get('bar');
+      }).then(function () {
+        return db.lru.put('foo', 'Zm9v', '/text/plain');
+      }).then(function () {
+        // now the tables have turned
+        return db.lru.get('foo');
+      }).then(function () {
+        return db.lru.get('bar').then(function () {
+          throw new Error('should not be here');
+        }, function (err) {
+          should.exist(err);
+        });
+      });
+    });
+
   });
 }
