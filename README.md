@@ -8,9 +8,11 @@ An LRU (least recently used) cache designed for storing binary data in PouchDB.
 Motivation
 -------
 
-In mobile and offline-ready apps, you often want to have a small store of binary data that you can guarantee won't grow out of control. This is entirely possible in PouchDB, but implementing it correctly requires some subtle knowledge of how PouchDB deduplicates attachments and how CouchDB compaction works.
+In mobile and offline-ready webapps, you often want to have a small store of binary data that you can guarantee won't grow out of control. For instance, this could be used for caching images so that you don't have to re-load them every time.
 
-Why PouchDB? Because it's the best and [most efficient] way to store binary data cross-browser. You could just use Web SQL, but then  you'd be locked into a Webkit-only implementation. This code will work on IE 10+, Windows Phone 8, Firefox, Firefox OS, Chrome, Safari, iOS, and Android.
+This is entirely possible in PouchDB, but implementing it correctly requires some subtle knowledge of how PouchDB deduplicates attachments and how CouchDB compaction works. Hence this plugin.
+
+Why PouchDB? Because it's the most [efficient](http://pouchdb.com/faq.html#data_types) and [well-tested](travis-ci.org/pouchdb/pouchdb) way to store binary data with cross-browser support. Yes, you could just use Web SQL, but then you'd be locked into a WebKit-only implementation. This code will work on IE 10+, Windows Phone 8, Firefox, Firefox OS, Chrome, Safari, iOS, Android, and Node.js.
 
 Usage
 ----
@@ -48,10 +50,10 @@ All API calls are on a `db` object created using `new PouchDB('myName')`. For be
 
 ### Overview
 
-* db.initLru([maxSize])
-* db.lru.put(key, blob)
-* db.lru.get(key)
-* db.lru.info()
+* [db.initLru([maxSize])](#dbinitlrumaxsize)
+* [db.lru.put(key, blob, type)](#dblruputkey-blob--type)
+* [db.lru.get(key)](#dblrugetkey)
+* [db.lru.info()](#dblruinfo)
 
 ### db.initLru(maxSize)
 
@@ -72,14 +74,14 @@ This is a synchronous method and does not return a Promise.
 
 **Note:** see an important [caveat](#caveats) below about the true size on disk.
 
-### db.lru.put(key, blob [, type])
+### db.lru.put(key, blob, type)
 
 Store a binary Blob in the database. Returns a Promise that will resolve with success if the attachment was successfully stored.
 
 ### Arguments:
 
 * `key`: a String to use to identify the blob (e.g. a URL).
-* `blob`: an HTML5 [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob?redirectlocale=en-US&redirectslug=DOM%2FBlob) object or a base64-encoded string.
+* `blob`: an HTML5 [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob?redirectlocale=en-US&redirectslug=DOM%2FBlob), Node [Buffer](http://nodejs.org/api/buffer.html), or a base64-encoded string.
 * `type`: the content-type, e.g. `'text/plain'`, `'image/png'`, `'image/jpeg'`, etc. Yes, this is redundant in the case of an HTML5 Blob, but we require it because Node `Buffer`s and base64-encoded strings do not have an inherent type.
 
 ### Example:
