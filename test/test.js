@@ -330,5 +330,39 @@ function tests(dbName, dbType) {
             'expected either 67 or 73, and it is: ' + info.totalLength);
       });
     });
+
+    function compatBtoa(str) {
+      if (typeof process === 'undefined' || process.browser) {
+        return btoa(str);
+      } else {
+        return new Buffer(str).toString('base64');
+      }
+    }
+
+    it('issue #1, concurrent puts cause 409s', function () {
+      this.timeout(60000);
+      db.initLru(0);
+      var tasks = [];
+      for (var i = 0; i < 20; i++) {
+        tasks.push(i);
+      }
+      return Promise.all(tasks.map(function (i) {
+        var key = 'key_' + i;
+        var value = compatBtoa(i.toString());
+        return db.lru.put(key, value, 'text/plain').then(function () {
+          return Promise.all([
+            db.lru.put(key, value, 'text/plain'),
+            db.lru.get(key),
+            db.lru.put(key, value, 'text/plain'),
+            db.lru.get(key),
+            db.lru.put(key, value, 'text/plain'),
+            db.lru.get(key),
+            db.lru.put(key, value, 'text/plain')
+          ]);
+        });
+      })).catch(function (err) {
+        throw err;
+      });
+    });
   });
 }

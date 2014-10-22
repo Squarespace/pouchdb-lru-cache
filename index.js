@@ -6,27 +6,28 @@ var Promise = utils.Promise;
 var MAIN_DOC_ID = 'lru__';
 var LAST_USED_DOC_ID = '_local/lru_last_used';
 
-var noop = function () {};
-
-/**
- * Do everything in a single queue to ensure we don't get 409s.
- */
+// allows us to execute things synchronously
 var queue = Promise.resolve();
+var noop = function () {};
 
 /**
  * Create the doc if it doesn't exist
  */
 function getDocWithDefault(db, id, defaultDoc) {
   return db.get(id).catch(function (err) {
-    /* istanbul ignore else */
-    if (err.status === 404) {
-      defaultDoc._id = id;
-      return db.put(defaultDoc).then(function () {
-        return db.get(id);
-      });
-    } else {
+    /* istanbul ignore if */
+    if (err.status !== 404) {
       throw err;
     }
+    defaultDoc._id = id;
+    return db.put(defaultDoc).catch(function (err) {
+      /* istanbul ignore if */
+      if (err.status !== 409) {
+        throw err;
+      }
+    }).then(function () {
+      return db.get(id);
+    });
   });
 }
 
@@ -92,6 +93,19 @@ function calculateTotalSize(mainDoc) {
 }
 
 /**
+ * To mitigate 409s, we synchronize certain things that need to be
+ * done in a "transaction". So whatever promise is given to this
+ * function will execute sequentially.
+ */
+function synchronous(promiseFactory) {
+  return function () {
+    var promise = queue.then(promiseFactory);
+    queue = promise.catch(noop); // squelch
+    return promise;
+  };
+}
+
+/**
  * Get the digest that's the least recently used. If a digest was used
  * by more than one attachment, then favor the more recent usage date.
  */
@@ -117,6 +131,47 @@ function getLeastRecentlyUsed(mainDoc, lastUsedDoc) {
   return minDigest;
 }
 
+function putBinary(db, key, blob, type) {
+  return getMainDoc(db).then(function (mainDoc) {
+    if (mainDoc._attachments[key]) {
+      return; // already stored
+    }
+    return db.putAttachment(MAIN_DOC_ID, key, mainDoc._rev, blob, type);
+  });
+}
+
+function updateLastUsed(db, key, time, maxSize) {
+  return getDocs(db).then(function (docs) {
+    var mainDoc = docs[0];
+    var lastUsedDoc = docs[1];
+
+    var digest = mainDoc._attachments[key].digest;
+    lastUsedDoc.lastUsed[digest] = time;
+
+    var totalSize = calculateTotalSize(mainDoc);
+    if (totalSize <= maxSize) {
+      // don't need to update the mainDoc, just the local doc
+      return db.put(lastUsedDoc);
+    }
+
+    while (totalSize > maxSize) {
+      // need to trim the cache, i.e. delete the LRU
+      // objects until we fit in the size
+      var leastUsedDigest = getLeastRecentlyUsed(mainDoc, lastUsedDoc);
+
+      var attNames = Object.keys(mainDoc._attachments);
+      for (var i = 0; i < attNames.length; i++) {
+        var attName = attNames[i];
+        if (mainDoc._attachments[attName].digest === leastUsedDigest) {
+          delete mainDoc._attachments[attName];
+        }
+      }
+      totalSize = calculateTotalSize(mainDoc);
+    }
+    return db.bulkDocs([lastUsedDoc, mainDoc]);
+  });
+}
+
 /**
  * initLru
  */
@@ -134,81 +189,45 @@ exports.initLru = function (maxSize) {
    * put
    */
 
-  api.put = function (key, blob, type) {
-    key = encodeKey(key);
-    var promise = queue.then(function () {
+  api.put = function (rawKey, blob, type) {
+    var key = encodeKey(rawKey);
+    var time = new Date().getTime();
+
+    return Promise.resolve().then(function () {
       if (!type) {
         throw new Error('need to specify a content-type');
       }
-      return getMainDoc(db);
-    }).then(function (mainDoc) {
-      if (mainDoc._attachments[key]) {
-        return; // already stored
-      }
-      return db.putAttachment(MAIN_DOC_ID, key, mainDoc._rev, blob, type);
-    }).then(function () {
-      return getDocs(db);
-    }).then(function (docs) {
-      var mainDoc = docs[0];
-      var lastUsedDoc = docs[1];
-      var digest = mainDoc._attachments[key].digest;
-
-      lastUsedDoc.lastUsed[digest] = new Date().getTime();
-
-      var totalSize = calculateTotalSize(mainDoc);
-
-      if (totalSize <= maxSize) {
-        // don't need to update the mainDoc, just the lastUsedDoc
-        return db.put(lastUsedDoc);
-      }
-
-      while (totalSize > maxSize) {
-        // need to trim the cache, i.e. delete the LRU
-        // objects until we fit in the size
-        var leastUsedDigest = getLeastRecentlyUsed(mainDoc, lastUsedDoc);
-
-        var attNames = Object.keys(mainDoc._attachments);
-        for (var i = 0; i < attNames.length; i++) {
-          var attName = attNames[i];
-          if (mainDoc._attachments[attName].digest === leastUsedDigest) {
-            delete mainDoc._attachments[attName];
-          }
-        }
-        totalSize = calculateTotalSize(mainDoc);
-      }
-      return db.bulkDocs([lastUsedDoc, mainDoc]);
-    }).then(function () {
+    }).then(synchronous(function () {
+      return putBinary(db, key, blob, type);
+    })).then(synchronous(function () {
+      return updateLastUsed(db, key, time, maxSize);
+    })).then(function () {
       return db.compact(); // attachments associated with non-leaf revisions will be deleted
     });
-
-    queue = promise.catch(noop); // squelch
-    return promise;
   };
 
   /**
    * get
    */
 
-  api.get = function (key) {
-    key = encodeKey(key);
+  api.get = function (rawKey) {
+    var key = encodeKey(rawKey);
+    var time = new Date().getTime();
 
-    var promise = queue.then(function () {
-      return getDocs(db);
-    }).then(function (docs) {
-      var mainDoc = docs[0];
-      var lastUsedDoc = docs[1];
+    return Promise.resolve().then(synchronous(function () {
+      return getDocs(db).then(function (docs) {
+        var mainDoc = docs[0];
+        var lastUsedDoc = docs[1];
 
-      var att = mainDoc._attachments[key];
-      if (att && lastUsedDoc.lastUsed[att.digest]) {
-        lastUsedDoc.lastUsed[att.digest] = new Date().getTime();
-        return db.put(lastUsedDoc);
-      }
-    }).then(function () {
+        var att = mainDoc._attachments[key];
+        if (att && lastUsedDoc.lastUsed[att.digest]) {
+          lastUsedDoc.lastUsed[att.digest] = time;
+          return db.put(lastUsedDoc);
+        }
+      });
+    })).then(function () {
       return db.getAttachment(MAIN_DOC_ID, key);
     });
-
-    queue = promise.catch(noop); // squelch
-    return promise;
   };
 
   /**
@@ -216,7 +235,7 @@ exports.initLru = function (maxSize) {
    */
 
   api.info = function () {
-    var promise = queue.then(function () {
+    return Promise.resolve().then(function () {
       return getDocs(db);
     }).then(function (docs) {
       var mainDoc = docs[0];
@@ -255,9 +274,6 @@ exports.initLru = function (maxSize) {
         totalLength: totalLength
       };
     });
-
-    queue = promise.catch(noop); // squelch
-    return promise;
   };
 
   db.lru = api;
