@@ -331,27 +331,32 @@ function tests(dbName, dbType) {
       });
     });
 
+    function compatBtoa(str) {
+      if (typeof process === 'undefined' || process.browser) {
+        return btoa(str);
+      } else {
+        return new Buffer(str).toString('base64');
+      }
+    }
+
     it('issue #1, concurrent puts cause 409s', function () {
       db.initLru(1);
       var tasks = [];
-      for (var i = 0; i < 10; i++) {
+      for (var i = 0; i < 20; i++) {
         tasks.push(i);
-      }
-      function rando() {
-        return PouchDB.utils.btoa(Math.random().toString());
       }
       return Promise.all(tasks.map(function (i) {
         var key = 'key_' + i;
-        return db.lru.put(key, rando(), 'text/plain').then(function () {
+        var value = compatBtoa(i.toString());
+        return db.lru.put(key, value, 'text/plain').then(function () {
           return Promise.all([
-            db.lru.put(key, rando(), 'text/plain'),
-            db.lru.put(key, rando(), 'text/plain'),
-            db.lru.put(key, rando(), 'text/plain'),
-            db.lru.put(key, rando(), 'text/plain'),
-            db.lru.put(key, rando(), 'text/plain'),
-            db.lru.put(key, rando(), 'text/plain'),
-            db.lru.put(key, rando(), 'text/plain'),
-            db.lru.put(key, rando(), 'text/plain')
+            db.lru.put(key, value, 'text/plain'),
+            db.lru.get(key),
+            db.lru.put(key, value, 'text/plain'),
+            db.lru.get(key),
+            db.lru.put(key, value, 'text/plain'),
+            db.lru.get(key),
+            db.lru.put(key, value, 'text/plain')
           ]);
         });
       }));
