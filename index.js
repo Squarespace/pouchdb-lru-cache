@@ -8,6 +8,8 @@ var LAST_USED_DOC_ID = '_local/lru_last_used';
 
 // allows us to execute things synchronously
 var queue = Promise.resolve();
+
+/* istanbul ignore next */
 var noop = function () {};
 
 /**
@@ -20,12 +22,7 @@ function getDocWithDefault(db, id, defaultDoc) {
       throw err;
     }
     defaultDoc._id = id;
-    return db.put(defaultDoc).catch(function (err) {
-      /* istanbul ignore if */
-      if (err.status !== 409) {
-        throw err;
-      }
-    }).then(function () {
+    return db.put(defaultDoc).then(function () {
       return db.get(id);
     });
   });
@@ -106,18 +103,27 @@ function synchronous(promiseFactory) {
 }
 
 /**
- * Get the digest that's the least recently used. If a digest was used
- * by more than one attachment, then favor the more recent usage date.
+ * Get a map of unique digests to when they were last used.
  */
-function getLeastRecentlyUsed(mainDoc, lastUsedDoc) {
-  var digestsToLastUsed = {};
+function getDigestsToLastUsed(mainDoc, lastUsedDoc) {
+  var result = {};
 
   // dedup by digest, use the most recent date
   Object.keys(mainDoc._attachments).forEach(function (attName) {
     var att = mainDoc._attachments[attName];
-    var existing  = digestsToLastUsed[att.digest] || 0;
-    digestsToLastUsed[att.digest] = Math.max(existing, lastUsedDoc.lastUsed[att.digest]);
+    var existing  = result[att.digest] || 0;
+    result[att.digest] = Math.max(existing, lastUsedDoc.lastUsed[att.digest]);
   });
+
+  return result;
+}
+
+/**
+ * Get the digest that's the least recently used. If a digest was used
+ * by more than one attachment, then favor the more recent usage date.
+ */
+function getLeastRecentlyUsed(mainDoc, lastUsedDoc) {
+  var digestsToLastUsed = getDigestsToLastUsed(mainDoc, lastUsedDoc);
 
   var min;
   var minDigest;
@@ -191,7 +197,7 @@ exports.initLru = function (maxSize) {
 
   api.put = function (rawKey, blob, type) {
     var key = encodeKey(rawKey);
-    var time = new Date().getTime();
+    var time = Date.now();
 
     return Promise.resolve().then(function () {
       if (!type) {
@@ -212,7 +218,7 @@ exports.initLru = function (maxSize) {
 
   api.get = function (rawKey) {
     var key = encodeKey(rawKey);
-    var time = new Date().getTime();
+    var time = Date.now();
 
     return Promise.resolve().then(synchronous(function () {
       return getDocs(db).then(function (docs) {
