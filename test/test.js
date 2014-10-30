@@ -44,10 +44,12 @@ function tests(dbName, dbType) {
   var db;
 
   beforeEach(function () {
+    this.timeout(30000);
     db = new PouchDB(dbName);
     return db;
   });
   afterEach(function () {
+    this.timeout(30000);
     return PouchDB.destroy(dbName);
   });
   describe(dbType + ': main test suite', function () {
