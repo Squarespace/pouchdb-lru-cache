@@ -12,7 +12,7 @@ In mobile and offline-ready webapps, you often want to have a small store of bin
 
 This is entirely possible in PouchDB, but implementing it correctly requires some subtle knowledge of how PouchDB deduplicates attachments and how CouchDB compaction works. Hence this plugin.
 
-Why PouchDB? Because it's the most [efficient](http://pouchdb.com/faq.html#data_types) and [well-tested](travis-ci.org/pouchdb/pouchdb) way to store binary data with cross-browser support. Yes, you could just use Web SQL, but then you'd be locked into a WebKit-only implementation. This code will work on IE 10+, Windows Phone 8, Firefox, Firefox OS, Chrome, Safari, iOS, Android, and Node.js.
+Why PouchDB? Because it's the most [efficient](http://pouchdb.com/faq.html#data_types) and [well-tested](https://travis-ci.org/pouchdb/pouchdb) way to store binary data with cross-browser support. Yes, you could just use Web SQL, but then you'd be locked into a WebKit-only implementation. This code will work on IE 10+, Windows Phone 8, Firefox, Firefox OS, Chrome, Safari, iOS, Android, and Node.js.
 
 Usage
 ----
