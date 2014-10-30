@@ -14,6 +14,8 @@ This is entirely possible in PouchDB, but implementing it correctly requires som
 
 Why PouchDB? Because it's the most [efficient](http://pouchdb.com/faq.html#data_types) and [well-tested](https://travis-ci.org/pouchdb/pouchdb) way to store binary data with cross-browser support. Yes, you could just use Web SQL, but then you'd be locked into a WebKit-only implementation. This code will work on IE 10+, Windows Phone 8, Firefox, Firefox OS, Chrome, Safari, iOS, Android, and Node.js.
 
+Since Blobs in the browser are kinda tricky to work with, you may also want to look into [blob-util](https://github.com/nolanlawson/blob-util).
+
 Usage
 ----
 
@@ -48,11 +50,16 @@ API
 
 All API calls are on a `db` object created using `new PouchDB('myName')`. For best performance, you should use a separate DB for this LRU plugin and not call any non-LRU methods on the `db`.
 
+The API is largely a ~~blatant ripoff~~ homage to [node-lru-cache](https://github.com/isaacs/node-lru-cache).
+
 ### Overview
 
 * [`db.initLru([maxSize])`](#dbinitlrumaxsize)
 * [`db.lru.put(key, blob, type)`](#dblruputkey-blob--type)
 * [`db.lru.get(key)`](#dblrugetkey)
+* [`db.lru.peek(key)`](#dblrupeekkey)
+* [`db.lru.del(key)`](#dblrudelkey) 
+* [`db.lru.has(key)`](#dblruhaskey)
 * [`db.lru.info()`](#dblruinfo)
 
 ### db.initLru([maxSize])
@@ -78,13 +85,13 @@ This is a synchronous method and does not return a Promise.
 
 Store a binary Blob in the database. Returns a Promise that will resolve with success if the attachment was successfully stored.
 
-### Arguments:
+#### Arguments:
 
 * `key`: a String to use to identify the blob (e.g. a URL).
 * `blob`: an HTML5 [Blob](https://developer.mozilla.org/en-US/docs/Web/API/Blob?redirectlocale=en-US&redirectslug=DOM%2FBlob), Node [Buffer](http://nodejs.org/api/buffer.html), or a base64-encoded string.
 * `type`: the content-type, e.g. `'text/plain'`, `'image/png'`, `'image/jpeg'`, etc. Yes, this is redundant in the case of an HTML5 Blob, but we require it because Node `Buffer`s and base64-encoded strings do not have an inherent type.
 
-### Example:
+#### Example:
 
 With HTML5 Blobs:
 
@@ -114,11 +121,11 @@ db.lru.put('my_id', base64, 'text/plain').then(function () {
 
 Get the binary data from the database based on the given String `key`. The data is always returned in HTML5 Blob format (or a Buffer in Node). If the data is not present (either because it got evicted, or because it never existed), then you'll get an error with status 404.
 
-### Arguments:
+#### Arguments:
 
 * `key`: a String to use to identify the blob (e.g. a URL).
 
-### Example:
+#### Example:
 
 ```js
 db.lru.get('my_id').then(function (blob) {
@@ -129,7 +136,43 @@ db.lru.get('my_id').then(function (blob) {
   } else {
     // some other nasty error. maybe your computer asploded
   }
-})
+});
+```
+
+### db.lru.peek(key)
+
+Same as `get()`, but doesn't update the recent-ness of the blob.
+
+#### Arguments:
+
+* `key`: the String that identifies the blob.
+
+### db.lru.del(key)
+
+Deletes the blob associated with the key, or does nothing if the blob doesn't exist or is already deleted.
+
+#### Arguments:
+
+* `key`: the String that identifies the blob.
+
+### db.lru.has(key)
+
+Returns true if the blob is in the store, false if it was deleted, evicted, or never existed.
+
+#### Arguments:
+
+* `key`: the String that identifies the blob.
+
+#### Example:
+
+```js
+db.lru.has('my_id').then(function (hasIt) {
+  if (hasIt) {
+    // yep, the blob exists
+  } else {
+    // nope, go fish
+  }
+});
 ```
 
 ### db.lru.info()

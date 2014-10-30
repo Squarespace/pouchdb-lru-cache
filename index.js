@@ -213,6 +213,29 @@ exports.initLru = function (maxSize) {
   };
 
   /**
+   * peek
+   */
+  api.peek = function (rawKey) {
+    var key = encodeKey(rawKey);
+
+    return db.getAttachment(MAIN_DOC_ID, key);
+  };
+
+  /**
+   * del
+   */
+  api.del = function (rawKey) {
+    var key = encodeKey(rawKey);
+
+    return Promise.resolve().then(synchronous(function () {
+      return getMainDoc(db).then(function (mainDoc) {
+        delete mainDoc._attachments[key];
+        return db.put(mainDoc);
+      });
+    }));
+  };
+
+  /**
    * get
    */
 
@@ -233,6 +256,18 @@ exports.initLru = function (maxSize) {
       });
     })).then(function () {
       return db.getAttachment(MAIN_DOC_ID, key);
+    });
+  };
+
+  /**
+   * has
+   */
+
+  api.has = function (rawKey) {
+    var key = encodeKey(rawKey);
+
+    return getMainDoc(db).then(function (mainDoc) {
+      return !!mainDoc._attachments[key];
     });
   };
 

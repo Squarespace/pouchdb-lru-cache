@@ -240,6 +240,80 @@ function tests(dbName, dbType) {
       });
     });
 
+    it('peek() doesn\'t update what\'s recently used', function () {
+      db.initLru(10);
+      return db.lru.put('foo', 'Zm9v', 'text/plain').then(function () {
+        return db.lru.put('bar', 'YmFy', 'text/plain');
+      }).then(function () {
+        return db.lru.peek('foo'); // doesn't update foo
+      }).then(function (foo) {
+        if (process.browser) {
+          foo.type.should.match(/^text\/plain/); // buffers don't have types
+        }
+        return blobEquals(foo, 'Zm9v');
+      }).then(function () {
+        return db.lru.put('foobar', 'Zm9vYmFy', 'text/plain');
+      }).then(function () {
+        return db.lru.get('foo').then(function () {
+          throw new Error('should not be here: foo');
+        }, function (err) {
+          should.exist(err);
+        });
+      }).then(function () {
+        return db.lru.peek('foo').then(function () {
+          throw new Error('should not be here: foo');
+        }, function (err) {
+          should.exist(err);
+        });
+      }).then(function () {
+        return db.lru.get('foobar');
+      }).then(function () {
+        return db.lru.get('bar');
+      }).then(function () {
+        return db.lru.peek('foobar');
+      }).then(function () {
+        return db.lru.peek('bar');
+      });
+    });
+
+    it('del() deletes stuff', function () {
+      db.initLru(100);
+      return db.lru.del('notexist').then(function () {
+        return db.lru.put('foo', 'Zm9v', 'text/plain');
+      }).then(function () {
+        return db.lru.get('foo');
+      }).then(function () {
+        return db.lru.put('bar', 'YmFy', 'text/plain');
+      }).then(function () {
+        return db.lru.get('foo');
+      }).then(function () {
+        return db.lru.get('bar');
+      }).then(function () {
+        return db.lru.del('foo');
+      }).then(function () {
+        return db.lru.get('bar');
+      }).then(function () {
+        return db.lru.get('foo').then(function () {
+          throw new Error('should not be here');
+        }, function (err) {
+          should.exist(err);
+        });
+      }).then(function () {
+        return db.lru.del('bar');
+      }).then(function () {
+        return db.lru.get('bar').then(function () {
+          throw new Error('should not be here');
+        }, function (err) {
+          should.exist(err);
+        });
+      }).then(function () {
+        return db.lru.info();
+      }).then(function (info) {
+        info.numEvicted.should.equal(2);
+        info.numUniqueItems.should.equal(0);
+      });
+    });
+
     it('can put after deleting', function () {
       db.initLru(5);
       return db.lru.put('foo', 'Zm9v', 'text/plain').then(function () {
@@ -364,6 +438,35 @@ function tests(dbName, dbType) {
         });
       })).catch(function (err) {
         throw err;
+      });
+    });
+
+    it('returns has() correctly', function () {
+      db.initLru(5);
+      return db.lru.has('dontexist').then(function (hasIt) {
+        hasIt.should.equal(false);
+      }).then(function () {
+        return db.lru.put('foo', 'Zm9v', 'text/plain');
+      }).then(function () {
+        return db.lru.has('foo');
+      }).then(function (hasIt) {
+        hasIt.should.equal(true);
+        return db.lru.put('bar', 'YmFy', 'text/plain');
+      }).then(function () {
+        return db.lru.has('foo');
+      }).then(function (hasIt) {
+        hasIt.should.equal(false);
+        return db.lru.has('bar');
+      }).then(function (hasIt) {
+        hasIt.should.equal(true);
+        return db.lru.put('foo', 'Zm9v', '/text/plain');
+      }).then(function () {
+        // now the tables have turned
+        return db.lru.has('foo');
+      }).then(function () {
+        return db.lru.has('bar');
+      }).then(function (hasIt) {
+        hasIt.should.equal(false);
       });
     });
   });
