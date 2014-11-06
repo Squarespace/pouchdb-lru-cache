@@ -469,5 +469,40 @@ function tests(dbName, dbType) {
         hasIt.should.equal(false);
       });
     });
+    
+    it('repro 409 that should not happen', function () {
+      db.initLru(0);
+
+      var numSimultaneous = 20;
+      var numDups = 3;
+
+      var tasks = [];
+
+      for (var i = 0; i < numSimultaneous; i++) {
+        var key = Math.random().toString();
+        var value = compatBtoa(key);
+        for (var j = 0; j < numDups; j++) {
+          tasks.push({key: key, value: value});
+        }
+      }
+
+      function cache(src, value) {
+
+        return db.lru.has(src).then(function (hasIt) {
+          if (!hasIt) {
+            return db.lru.put(src, value, 'text/plain');
+          }
+          return db.lru.get(src).catch(function (err) {
+            if (err.status !== 404) {
+              throw err;
+            }
+          });
+        });
+      }
+
+      return PouchDB.utils.Promise.all(tasks.map(function (task) {
+        return cache(task.key, task.value);
+      }));
+    });
   });
 }

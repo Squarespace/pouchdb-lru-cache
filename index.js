@@ -22,7 +22,12 @@ function getDocWithDefault(db, id, defaultDoc) {
       throw err;
     }
     defaultDoc._id = id;
-    return db.put(defaultDoc).then(function () {
+    return db.put(defaultDoc).catch(function (err) {
+      /* istanbul ignore if */
+      if (err.status !== 409) { // conflict
+        throw err;
+      }
+    }).then(function () {
       return db.get(id);
     });
   });
