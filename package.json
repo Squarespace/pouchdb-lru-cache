@@ -1,6 +1,6 @@
 {
   "name": "pouchdb-lru-cache",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "PouchDB LRU Cache for storing binary data cross-browser",
   "main": "index.js",
   "repository": {
