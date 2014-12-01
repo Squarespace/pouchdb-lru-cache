@@ -225,19 +225,38 @@ Return values:
 
 Notice that the LRU cache takes into consideration the fact that attachments are deduped based on digest in PouchDB.
 
-Caveats
+Implementation details
 --------
 
-The `maxSize` specified in `initLru()` refers to the byte length of the binary attachments as interpreted by PouchDB. The underlying storage engine may take up more actual space on disk than the byte length, [depending on the browser and adapter](http://pouchdb.com/faq.html#data_types). However, most browsers seem to have fixed their inefficiency issues (Chrome 38+, Safari 7.1+, iOS 8+), so this will become less of a problem going forward.
+### PouchDB 3.1.0+ only
+
+This plugin only works with PouchDB 3.1.0+. Before that, attachments were not compacted.
+
+### `maxSize` is an estimate
+
+The `maxSize` specified in `initLru()` refers to the byte length of the binary attachments as interpreted by PouchDB. The underlying storage engine may take up more actual space on disk than the byte length, [depending on the browser and adapter](http://pouchdb.com/faq.html#data_types).  However, most browsers seem to have fixed their inefficiency issues (Chrome 38+, Safari 7.1+, iOS 8+), so this will become less of a problem going forward.
+
+In WebSQL, you also can't really predict how much space a BLOB will consume; see [this thread](http://sqlite.1065341.n5.nabble.com/Writing-in-a-blob-td68340.html) for details. In practice it seems to vary up to 50% overhead, but that was just in [my own tests](https://github.com/pouchdb/pouchdb/issues/2910).
 
 Furthermore, the `maxSize` does not account for the metadata that needs to be stored in order to *describe* the attachments, so you should give yourself a reasonable buffer when you choose a `maxSize`.
 
-This plugin also works on CouchDB, but YMMV. In particular, CouchDB doesn't dedup attachments based on digest, so the assumptions this plugin makes about the true underlying size may be wrong.
+Browsers also have [storage limits](http://pouchdb.com/faq.html#data_limits). Be aware of them.
+
+### CouchDB
+
+This plugin also works on CouchDB, but YMMV. In particular, CouchDB doesn't dedup attachments based on digest (instead it uses doc ID + attachment name), so the assumptions this plugin makes about the true underlying size may be wrong.
+
+### Auto-compaction
 
 You can use a PouchDB with `auto_compaction` enabled, but it's not necessary, because this plugin already does the compaction for you.
 
-Browsers have [storage limits](http://pouchdb.com/faq.html#data_limits). Be aware of them.
+### Perf tricks
 
+If you look at the code, you'll also see that I store data in a `_local` doc. This is a special class of document that doesn't retain its full version history, so it avoids the metadata growing unreasonably large over time. Local docs are also faster than regular docs for normal gets/puts.
+
+### Replication
+
+This plugin is not really designed for databases you want to replicate. In particular, the use of a `_local` document makes it un-replicatable.
 
 Building
 ----
