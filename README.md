@@ -5,6 +5,28 @@ PouchDB LRU Cache
 
 An LRU (least recently used) cache designed for storing binary data in PouchDB. Runs in modern browsers and Node.js.
 
+Example
+----
+
+```js
+var db = new PouchDB('my_cache');
+db.initLru(5000000); // store 5 MB maximum
+
+// store a blob or a buffer
+db.lru.put('file1.png', blobOrBuffer).then(function () {
+  // store another blob/buffer
+  return db.lru.put('file2.png', anotherBlobOrBuffer);
+}).then(function () {
+  // if the files add up to >5MB, file1 will be evicted before file2
+  return db.lru.get('file1.png');
+}).then(function (fetchedBlob) {
+  // yay, we fetched file1!
+  // now file2 will be evicted before file1
+}).catch(function (err) {
+  // file1 was evicted
+});
+```
+
 Motivation
 -------
 
@@ -12,7 +34,7 @@ In mobile and offline-ready webapps, you often want to have a small store of bin
 
 This is entirely possible in PouchDB, but implementing it correctly requires some subtle knowledge of how PouchDB deduplicates attachments and how CouchDB compaction works. Hence this plugin.
 
-Why PouchDB? Because it's the most [efficient](http://pouchdb.com/faq.html#data_types) and [well-tested](https://travis-ci.org/pouchdb/pouchdb) way to store binary data with cross-browser support. Yes, you could just use Web SQL, but then you'd be locked into a WebKit-only implementation. This code will work on IE 10+, Windows Phone 8, Firefox, Firefox OS, Chrome, Safari, iOS, Android, and Node.js.
+Why PouchDB? Because it's the most [efficient](http://pouchdb.com/faq.html#data_types) and [well-tested](https://travis-ci.org/pouchdb/pouchdb) way to store binary data with cross-browser support. This plugin works in IE 10+, Windows Phone 8, Firefox, Firefox OS, Chrome, Safari, iOS, Android, and Node.js.
 
 Since Blobs in the browser are kinda tricky to work with, you may also want to look into [blob-util](https://github.com/nolanlawson/blob-util).
 
@@ -32,7 +54,7 @@ Then include it after `pouchdb.js` in your HTML page:
 <script src="pouchdb.lru-cache.js"></script>
 ```
 
-Or to use it in Node.js, just npm install it:
+Or to use it in Node.js or Browserify, just npm install it:
 
 ```
 npm install pouchdb-lru-cache
@@ -119,7 +141,7 @@ db.lru.put('my_id', base64, 'text/plain').then(function () {
 
 ### db.lru.get(key)
 
-Get the binary data from the database based on the given String `key`. The data is always returned in HTML5 Blob format (or a Buffer in Node). If the data is not present (either because it got evicted, or because it never existed), then you'll get an error with status 404.
+Get a Promise for the binary data associated with the given String `key`. The data is always returned in HTML5 Blob format (or a Buffer in Node). If the data is not present (either because it got evicted, or because it never existed), then you'll get an error with status 404.
 
 #### Arguments:
 
@@ -151,13 +173,15 @@ Same as `get()`, but doesn't update the recent-ness of the blob.
 
 Deletes the blob associated with the key, or does nothing if the blob doesn't exist or is already deleted.
 
+Returns a Promise that resolves when the deletion is complete.
+
 #### Arguments:
 
 * `key`: the String that identifies the blob.
 
 ### db.lru.has(key)
 
-Returns true if the blob is in the store, false if it was deleted, evicted, or never existed.
+Returns a Promise for `true` if the blob is in the store, or `false` if it was deleted, evicted, or never existed.
 
 #### Arguments:
 
@@ -177,7 +201,7 @@ db.lru.has('my_id').then(function (hasIt) {
 
 ### db.lru.info()
 
-Get some basic information about what's stored in the LRU cache.
+Returns a Promise for some basic information about what's stored in the LRU cache.
 
 ### Example:
 
@@ -185,7 +209,7 @@ Get some basic information about what's stored in the LRU cache.
 db.lru.info().then(function (info) {
   // got the info object
 }).catch(function (err) {
-  // splodey computer
+  // 'splodey computer
 });
 ```
 
