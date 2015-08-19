@@ -258,13 +258,15 @@ This plugin only works with PouchDB 3.1.0+. Before that, attachments were not co
 
 ### `maxSize` is an estimate
 
-The `maxSize` specified in `initLru()` refers to the byte length of the binary attachments as interpreted by PouchDB. The underlying storage engine may take up more actual space on disk than the byte length, [depending on the browser and adapter](http://pouchdb.com/faq.html#data_types).  However, most browsers seem to have fixed their inefficiency issues (Chrome 38+, Safari 7.1+, iOS 8+), so this will become less of a problem going forward.
+The `maxSize` specified in `initLru()` refers to the byte length of the binary attachments as interpreted by PouchDB (i.e. `blob.size`). The underlying storage engine may take up more actual space on disk than the byte length, depending on the browser and adapter. PouchDB's [FAQ page](http://pouchdb.com/faq.html#data_types) has some details.
 
-In WebSQL, you also can't really predict how much space a BLOB will consume; see [this thread](http://sqlite.1065341.n5.nabble.com/Writing-in-a-blob-td68340.html) for details. In practice it seems to vary up to 50% overhead, but that was just in [my own tests](https://github.com/pouchdb/pouchdb/issues/2910).
+In IndexedDB, modern browsers (Chrome 43+, Firefox, and IE 10+) will store Blobs directly to disk, so there should be a 1-to-1 correspondence between `blob.size` and the space taken up on disk. In Chrome <43 and Android <5.0, it will be signficantly more due to PouchDB's base64 workaround.
+
+In WebSQL, you can't really predict how much space a BLOB will consume; see [this thread](http://sqlite.1065341.n5.nabble.com/Writing-in-a-blob-td68340.html) for details. In [my own tests](https://github.com/pouchdb/pouchdb/issues/2910), it seemed to vary up to 50% overhead, proably due to [WebSQL coercion of blobs to binary strings](https://github.com/litehelpers/Cordova-sqlite-storage/issues/255#issuecomment-101367587).
 
 Furthermore, the `maxSize` does not account for the metadata that needs to be stored in order to *describe* the attachments, so you should give yourself a reasonable buffer when you choose a `maxSize`.
 
-Browsers also have [storage limits](http://pouchdb.com/faq.html#data_limits). Be aware of them.
+Browsers also have [storage limits](http://pouchdb.com/faq.html#data_limits), so be aware of them.
 
 ### CouchDB
 
