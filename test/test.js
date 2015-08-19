@@ -50,7 +50,7 @@ function tests(dbName, dbType) {
   });
   afterEach(function () {
     this.timeout(30000);
-    return PouchDB.destroy(dbName);
+    return db.destroy();
   });
   describe(dbType + ': main test suite', function () {
     this.timeout(30000);
