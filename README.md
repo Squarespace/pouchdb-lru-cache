@@ -1,7 +1,5 @@
-PouchDB LRU Cache
+PouchDB LRU Cache [![Build Status](https://travis-ci.org/squarespace/pouchdb-lru-cache.svg)](https://travis-ci.org/squarespace/pouchdb-lru-cache) [![npm version](https://badge.fury.io/js/pouchdb-lru-cache.svg)](http://badge.fury.io/js/pouchdb-lru-cache)
 =====
-
-[![Build Status](https://travis-ci.org/squarespace/pouchdb-lru-cache.svg)](https://travis-ci.org/squarespace/pouchdb-lru-cache)
 
 An LRU (least recently used) cache designed for storing binary data in PouchDB. Runs in modern browsers and Node.js.
 
@@ -54,7 +52,7 @@ Then include it after `pouchdb.js` in your HTML page:
 <script src="pouchdb.lru-cache.js"></script>
 ```
 
-Or to use it in Node.js or Browserify, just npm install it:
+Or to use it in Node.js or Browserify, just `npm install` it:
 
 ```
 npm install pouchdb-lru-cache
@@ -64,7 +62,7 @@ And then attach it to the `PouchDB` object:
 
 ```js
 var PouchDB = require('pouchdb');
-PouchDB.plugin(require('pouchdb-myplugin'));
+PouchDB.plugin(require('pouchdb-lru-cache'));
 ```
 
 API
