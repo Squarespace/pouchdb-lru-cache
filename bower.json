@@ -1,0 +1,27 @@
+{
+  "name": "pouchdb-lru-cache",
+  "main": "dist/pouchdb.lru-cache.js",
+  "version": "1.1.3",
+  "homepage": "https://github.com/Squarespace/pouchdb-lru-cache",
+  "description": "PouchDB LRU Cache for storing binary data cross-browser",
+  "moduleType": [
+    "node"
+  ],
+  "keywords": [
+    "pouchdb",
+    "lru",
+    "cache",
+    "plugin"
+  ],
+  "authors": [
+    "Nolan Lawson <nolan@nolanlawson.com>"
+  ],
+  "license": "Apache 2",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
