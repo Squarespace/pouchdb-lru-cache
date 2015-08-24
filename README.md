@@ -1,5 +1,7 @@
-PouchDB LRU Cache [![Build Status](https://travis-ci.org/squarespace/pouchdb-lru-cache.svg)](https://travis-ci.org/squarespace/pouchdb-lru-cache) [![npm version](https://badge.fury.io/js/pouchdb-lru-cache.svg)](http://badge.fury.io/js/pouchdb-lru-cache)
+PouchDB LRU Cache
 =====
+
+[![Build Status](https://travis-ci.org/Squarespace/pouchdb-lru-cache.svg)](https://travis-ci.org/Squarespace/pouchdb-lru-cache) [![Coverage Status](https://coveralls.io/repos/Squarespace/pouchdb-lru-cache/badge.svg?branch=master&service=github)](https://coveralls.io/github/Squarespace/pouchdb-lru-cache?branch=master) [![npm version](https://badge.fury.io/js/pouchdb-lru-cache.svg)](http://badge.fury.io/js/pouchdb-lru-cache)
 
 An LRU (least recently used) cache designed for storing binary data in PouchDB. Runs in modern browsers and Node.js.
 

@@ -28,6 +28,7 @@ env:
   - CLIENT=selenium:firefox COMMAND=test
   - CLIENT=selenium:phantomjs COMMAND=test
   - COMMAND=coverage
+  - COMMAND=report-coverage
 
 branches:
   only:
