@@ -13,6 +13,8 @@ var testTimeout = 30 * 60 * 1000;
 var username = process.env.SAUCE_USERNAME;
 var accessKey = process.env.SAUCE_ACCESS_KEY;
 
+var FIREFOX_BIN = process.env.FIREFOX_BIN;
+
 // process.env.CLIENT is a colon seperated list of
 // (saucelabs|selenium):browserName:browserVerion:platform
 var tmp = (process.env.CLIENT || 'selenium:firefox').split(':');
@@ -129,6 +131,10 @@ function startTest() {
     'idle-timeout': 599,
     'tunnel-identifier': tunnelId
   };
+
+  if (FIREFOX_BIN) {
+    opts.firefox_binary = FIREFOX_BIN;
+  }
 
   sauceClient.init(opts).get(testUrl, function () {
 
