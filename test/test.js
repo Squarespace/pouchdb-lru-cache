@@ -500,7 +500,7 @@ function tests(dbName, dbType) {
         });
       }
 
-      return PouchDB.utils.Promise.all(tasks.map(function (task) {
+      return Promise.all(tasks.map(function (task) {
         return cache(task.key, task.value);
       }));
     });
